@@ -9,17 +9,26 @@ class Column:
 
 class SpreadSheet:
     def __init__(self, spread_sheet_obj):
-        self.columns = {col.name: col for col in spread_sheet_obj}
-        self.cells = {col.name: {} for col in spread_sheet_obj}
+        self.columns = {col.name.upper(): col for col in spread_sheet_obj if type(col.name) == str}
+        self.cells = {col.name.upper(): {} for col in spread_sheet_obj if type(col.name) == str}
         self.lookup_pairs = {}
+
+    def validate_set_input(self, column_name, row_idx):
+        if type(column_name) != str or type(row_idx) != int:
+            raise ValueError("Invalid input")
+        column_name = column_name.upper()
+        dest_col = self.columns.get(column_name, None)
+        # Check that the column exists
+        if not dest_col:
+            raise ValueError("Column not in sheet")
+        # Check same data type
+        if row_idx < 0:
+            raise ValueError("Illegal row index")
+        return dest_col
 
     def set_cell(self, column_name, row_idx, value):
         try:
-            dest_col = self.columns.get(column_name, None)
-            # Check that the column exists
-            if not dest_col:
-                raise ValueError("Column not in sheet")
-            # Check same data type
+            dest_col = self.validate_set_input(column_name, row_idx)
             if not dest_col.column_type == type(value):
                 raise ValueError("Wrong data type for column of type {}".format(dest_col.column_type))
             self.cells[column_name][row_idx] = value
@@ -32,12 +41,9 @@ class SpreadSheet:
 
     def set_cell_lookup(self, column_name, row_idx, lookup):
         try:
-            dest_col = self.columns.get(column_name, None)
-            # Check that the column exists
-            if not dest_col:
-                raise ValueError("Column not in sheet")
-            # Get the col and row from the lookup
+            dest_col = self.validate_set_input(column_name, row_idx)
             target = lookup.split("(")[1][:-1].split(",")
+            target[0] = target[0].replace(" ", "").upper()
             lookup_col = self.columns.get(target[0], None)
             # Check that the lookup column exists
             if not lookup_col:
@@ -48,12 +54,12 @@ class SpreadSheet:
             target[1] = int(target[1])
             # Check for cycle
             if (column_name == target[0] and row_idx == target[1]) \
-                    or self.check_cycle(target[0], (target[1]), {(column_name, row_idx)}):
+                    or self.check_cycle(target[0], target[1], {(column_name, row_idx)}):
                 raise ValueError("This lookup creates a loop")
             self.cells[column_name][row_idx] = (target[0], target[1])
             # Keep the pair for the get sheet function
             self.lookup_pairs[(column_name, row_idx)] = (target[0], target[1])
-            print("Cell value was set successfully to {}".format(lookup))
+            print("Cell value was set successfully to ({},{})".format(target[0], target[1]))
         except Exception as ex:
             print(ex)
 
@@ -71,9 +77,4 @@ class SpreadSheet:
             return self.check_cycle(new_col, new_row, visited_set)
         except Exception as ex:
             print(ex)
-            return ex
-
-
-
-
-
+            return ex.args[0]

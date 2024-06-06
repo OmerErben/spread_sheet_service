@@ -1,3 +1,4 @@
+import copy
 import uuid
 
 # In this file I define the main spreadsheet service
@@ -18,15 +19,15 @@ class SpreadSheetService:
 
     def create_new_sheet(self, sheet):
         try:
-            if not hasattr(sheet, "columns"):
-                raise ValueError("Invalid input. Sheet input must have columns")
+            if not hasattr(sheet, "columns") or not hasattr(sheet, "cells") or not hasattr(sheet, "lookup_pairs"):
+                raise ValueError("Invalid input. Object is not a legal spreadsheet")
             sheet_id = str(uuid.uuid4())
             self.sheets[sheet_id] = sheet
             print("New sheet created successfully")
             return sheet_id
         except Exception as ex:
             print(str(ex))
-            return ex
+            return ex.args[0]
 
     def set_sheet_cell(self, sheet_id, col, row, value):
         try:
@@ -44,15 +45,12 @@ class SpreadSheetService:
     def get_sheet_by_id(self, sheet_id):
         try:
             sheet = self.sheets.get(sheet_id, None)
-            for pair in sheet.lookup_pairs.keys():
-                sheet.cells[pair[0]][pair[1]] = finalize_value(sheet, pair[0], pair[1])
             if not sheet:
                 raise ValueError("Invalid input. There's no sheet with this id")
-            return sheet
+            sheet_cells = copy.deepcopy(sheet.cells)
+            for pair in sheet.lookup_pairs.keys():
+                sheet_cells[pair[0]][pair[1]] = finalize_value(sheet, pair[0], pair[1])
+            return sheet_cells
         except Exception as ex:
             print(str(ex))
-            return ex
-
-
-
-
+            return ex.args[0]
